@@ -22,7 +22,6 @@ router.addRoute('/*', ecstatic({
     autoIndex: true
 }));
 
-
 http.createServer(router)
   .listen(3000, function () {
     console.log('example page loaded on port 3000');

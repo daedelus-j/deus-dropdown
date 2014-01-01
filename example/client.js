@@ -11,12 +11,12 @@ var opts = {
     { text: 'a simil', model: { id: 6 } },
     { text: 'a simila', model: { id: 7 } },
     { text: 'a similar', model: { id: 8 } },
-    { text: 'a similar s', model: { id: 8 } },
-    { text: 'a similar st', model: { id: 9 } },
-    { text: 'a similar str', model: { id: 10 } },
-    { text: 'a similar stri', model: { id: 11 } },
-    { text: 'a similar strin', model: { id: 12 } },
-    { text: 'a similar string', model: { id: 13 } }
+    { text: 'a similar s', model: { id: 9 } },
+    { text: 'a similar st', model: { id: 10 } },
+    { text: 'a similar str', model: { id: 11 } },
+    { text: 'a similar stri', model: { id: 12 } },
+    { text: 'a similar strin', model: { id: 13 } },
+    { text: 'a similar string', model: { id: 14 } }
   ],
   btn: {
     text: 'Artists'
