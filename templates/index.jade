@@ -1,0 +1,15 @@
+include ./mixins/btn/text-with-icon.jade
+
+.deus-dd-cont
+  +btn_with_icon(btn)
+  .deus-dd-drop-cont
+    input.deus-dd-input(type="text")
+    ul.deus-dd-items
+      for option in options
+        li.deus-dd-item
+          a.deus-dd-item-btn(href="#")
+            span.option-text=option.text
+            i.icon.minus
+
+
+

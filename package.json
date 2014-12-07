@@ -1,0 +1,41 @@
+{
+  "name": "deus-dropdown",
+  "version": "0.0.1",
+  "description": "A vanilla-js dropdown for superior ux",
+  "main": "index.js",
+  "directories": {
+    "example": "example",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "test",
+    "watch": "npm run watch-js && npm run watch-example-js && npm run watch-css",
+    "watch-js": "./node_modules/watchify/bin/cmd.js -t jadeify ./index.js -o ./dist/deus-dropdown.js",
+    "watch-example-js": "./node_modules/watchify/bin/cmd.js -t jadeify ./example/index.js -o ./example/client.js",
+    "bundle-js": "./node_modules/browserify/bin/cmd.js -t jadeify ./index.js -o ./dist/deus-dropdown.js",
+    "watch-css": "./node_modules/stylus/bin/stylus -w ./styles ./styles/deus-dropdown.styl -o ./dist/",
+    "bundle-css": "./node_modules/stylus/bin/stylus -w ./styles ./styles/deus-dropdown.styl -o ./dist/"
+  },
+  "keywords": [
+    "ui",
+    "component",
+    "js",
+    "vanilla"
+  ],
+  "dependencies": {
+    "bind-all-lite": "0.0.2",
+    "inherits": "^2.0.1"
+  },
+  "devDependencies": {
+    "UI-Icon": "git+ssh://git@github.com:daedelus-j/UI-Icon.git",
+    "browserify": "^6.3.4",
+    "combokeys": "^2.0.0",
+    "dom-events": "^0.1.1",
+    "jadeify": "^3.0.0",
+    "stylus": "^0.49.3",
+    "tape": "^3.0.3",
+    "watchify": "^2.1.1"
+  },
+  "author": "Amadeus Junqueira",
+  "license": "ISC"
+}
