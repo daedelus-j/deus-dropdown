@@ -7,14 +7,17 @@
     "example": "example",
     "test": "tests"
   },
+  "browserify": {
+    "transform": [ "jadeify" ]
+  },
   "scripts": {
     "test": "test",
-    "watch": "npm run watch-js && npm run watch-example-js && npm run watch-css",
-    "watch-js": "./node_modules/watchify/bin/cmd.js -t jadeify ./index.js -o ./dist/deus-dropdown.js",
-    "watch-example-js": "./node_modules/watchify/bin/cmd.js -t jadeify ./example/index.js -o ./example/client.js",
-    "bundle-js": "./node_modules/browserify/bin/cmd.js -t jadeify ./index.js -o ./dist/deus-dropdown.js",
+    "example": "node ./example/server.js",
+    "watch": "npm run watch-js && npm run watch-css",
+    "watch-js": "./node_modules/watchify/bin/cmd.js ./index.js -o ./dist/deus-dropdown.js",
+    "bundle-js": "./node_modules/browserify/bin/cmd.js ./index.js -o ./dist/deus-dropdown.js",
     "watch-css": "./node_modules/stylus/bin/stylus -w ./styles ./styles/deus-dropdown.styl -o ./dist/",
-    "bundle-css": "./node_modules/stylus/bin/stylus -w ./styles ./styles/deus-dropdown.styl -o ./dist/"
+    "bundle-css": "./node_modules/stylus/bin/stylus ./styles/deus-dropdown.styl -o ./dist/"
   },
   "keywords": [
     "ui",
@@ -24,14 +27,19 @@
   ],
   "dependencies": {
     "bind-all-lite": "0.0.2",
-    "inherits": "^2.0.1"
+    "inherits": "^2.0.1",
+    "UI-Icon": "git+ssh://git@github.com:daedelus-j/UI-Icon.git",
+    "dom-events": "^0.1.1",
+    "lunr": "^0.5.7"
   },
   "devDependencies": {
-    "UI-Icon": "git+ssh://git@github.com:daedelus-j/UI-Icon.git",
     "browserify": "^6.3.4",
     "combokeys": "^2.0.0",
-    "dom-events": "^0.1.1",
+    "ecstatic": "^0.5.8",
     "jadeify": "^3.0.0",
+    "nodemon": "^1.2.1",
+    "routes-router": "^4.1.2",
+    "serve-browserify": "^1.1.0",
     "stylus": "^0.49.3",
     "tape": "^3.0.3",
     "watchify": "^2.1.1"

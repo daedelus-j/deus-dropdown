@@ -1981,3 +1981,15 @@ a {
 .deus-dd-item-btn.item-active {
   background: #eee;
 }
+.deus-dd-item-btn.item-inactive {
+  display: none;
+}
+.empty-item {
+  display: none;
+}
+.empty-search .empty-item {
+  display: block;
+}
+.empty-search .deus-dd-items {
+  display: none;
+}

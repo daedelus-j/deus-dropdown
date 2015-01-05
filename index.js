@@ -4,6 +4,7 @@ var Emitter             = require('events').EventEmitter;
 var inherits            = require('inherits');
 var dom                 = require('dom-events');
 var bindAll             = require('bind-all-lite');
+var search              = require('./lib/search');
 var q                   = require('./lib/helpers').querySelector;
 var qa                  = require('./lib/helpers').querySelectorAll;
 var toNode              = require('./lib/helpers').toNode;
@@ -13,13 +14,12 @@ var circularDecrement   = require('./lib/helpers').circularDecrement;
 var input               = require('./lib/input');
 
 function DeusDropdown(opts) {
-  // ASSERT(!!sel, 'must pass in a selector');
 
   if (!(this instanceof DeusDropdown)) {
     return new DeusDropdown(opts);
   }
 
-  ASSERT(!!opts.options, 'must pass in an options array');
+  ASSERT(!!opts.dropdownOptions, 'must pass in an options array');
 
   bindAll(
     this,
@@ -30,15 +30,21 @@ function DeusDropdown(opts) {
     '_onArrowUp',
     '_onItemMouseover',
     '_onItemMouseout',
-    '_onKeydown',
+    '_onKeyup',
     '_onArrowDown',
     '_onItemClick'
   );
 
   this._el = createEl(tmpl, opts);
-  this._options = opts.options;
-  this.activeItem = null;
+  this._dropdownOptions = opts.dropdownOptions;
+  this._activeElClassName = opts.activeElClassName || '.deus-item-active';
+  this._btnOptionSelector = opts.btnOptionSelector || '.deus-dd-item-btn';
+  this._iconSelector = opts.iconSelector || '.deus-btn-with-icon';
+  this._inputSelector = opts.inputSelector || '.deus-dd-input';
+  this._searchIndex = search.initialize(this._dropdownOptions);
   this._selectedItems = [];
+  this.activeItem = null;
+  this._activeItems = [];
 }
 
 module.exports = DeusDropdown;
@@ -60,38 +66,39 @@ Proto.render = function render() {
 
 Proto.bindEvents = function bindEvents() {
   var that = this;
-  dom.on(q('.deus-btn-with-icon', this._el), 'click', this._onClick);
+  dom.on(q(this._iconSelector, this._el), 'click', this._onClick);
 
-  [].forEach.call(qa('.deus-dd-item-btn', this._el),
+  [].forEach.call(qa(this._btnOptionSelector, this._el),
     function(itemEl, idx) {
       dom.on(itemEl, 'click', function(e){
-        that._onItemClick.apply(that, [e, that._options[idx]]);
+        that._onItemClick.apply(that, [e, that._dropdownOptions[idx]]);
       });
       dom.on(itemEl, 'mouseover', function(e){
-        that._onItemMouseover.apply(that, [e, that._options[idx]]);
+        that._onItemMouseover.apply(that, [e, that._dropdownOptions[idx]]);
       });
       dom.on(itemEl, 'mouseout', function(e){
-        that._onItemMouseout.apply(that, [e, that._options[idx]]);
+        that._onItemMouseout.apply(that, [e, that._dropdownOptions[idx]]);
       });
     });
 
-  input(q('.deus-dd-input', this._el), {
+  input(q(this._inputSelector, this._el), {
     onDown: this._onArrowDown,
     onEnter: this._onEnter,
     onEscape: this._onEscape,
-    onKeydown: this._onKeydown,
+    onKeyup: this._onKeyup,
     onUp: this._onArrowUp
   });
 };
 
 Proto._onClick = function _onClick(e) {
   e.preventDefault();
+  var that = this;
   this.emit('clicked', e);
   this._el.classList.toggle('deus-dd-active');
 
-  setTimeout(function(){
-    q('.deus-dd-input', this._el).focus();
-  }, 0);
+  process.nextTick(function(){
+    q(that._inputSelector, that._el).focus();
+  });
 };
 
 Proto._onItemClick = function _onItemClick(e, view) {
@@ -113,12 +120,12 @@ Proto._onItemMouseout = function _onItemMouseout(e) {
 
 Proto._onArrowDown = function _onArrowDown(e){
   e.preventDefault();
-  this._setNextActiveItem(this.activeItem, this._options.length - 1);
+  this._setNextActiveItem(this.activeItem, this._dropdownOptions.length - 1);
 };
 
 Proto._onArrowUp = function _onArrowUp(e){
   e.preventDefault();
-  this._setPrevActiveItem(this.activeItem, this._options.length - 1);
+  this._setPrevActiveItem(this.activeItem, this._dropdownOptions.length - 1);
 };
 
 Proto._onEscape = function _onEscape(){
@@ -128,28 +135,65 @@ Proto._onEscape = function _onEscape(){
 
 Proto._onEnter = function _onEnter(){
   if (this.activeItem){
-    this._updateSelectedItems(this.activeItem, this._selectedItems, this._options);
+    this._updateSelectedItems(this.activeItem, this._selectedItems, this._dropdownOptions);
   }
 };
 
-Proto._onKeydown = function _onKeydown(){
-  this._updateSearch();
+Proto._onKeyup = function _onKeyup(){
+  var searchString = q(this._inputSelector).value;
+  var indices;
+
+  // if blank reset active items
+  if (searchString === '') {
+    this._el.classList.remove('empty-search');
+    this._showActiveViewItems(this._dropdownOptions, this._activeElClassName);
+    return this;
+  }
+
+  indices = search.getIndices(this._searchIndex, searchString);
+  console.log('-------------', indices);
+
+  if (indices.length > 0) {
+    this._el.classList.remove('empty-search');
+    this._clearInactiveItems(qa(this._btnOptionSelector), 'item-inactive')
+      ._showActiveViewItems(indices, this._activeElClassName);
+    return this;
+  }
+
+  this._showEmptySearch();
 };
 
-Proto._updateSearch = function _updateSearch() {
-  // TODO implement search
+
+Proto._showEmptySearch = function _showEmptySearch(){
+  this._el.classList.add('empty-search');
+};
+
+Proto._showActiveViewItems = function _showActiveViewItems(indices, className){
+  [].filter.call(qa(this._btnOptionSelector, this._el),
+    function(el) {
+      console.log('--ids--', el.getAttribute('data-id'), indices);
+      return indices.indexOf(parseInt(el.getAttribute('data-id'), 10)) === -1;
+    })
+    .forEach(function(el){
+      el.classList.add('item-inactive');
+    });
+};
+
+Proto._clearInactiveItems = function _clearInactiveItems(els, inactiveClassName){
+  [].forEach.call(els, function(el){ el.classList.remove(inactiveClassName); });
+  return this;
 };
 
 Proto._updateSelectedItems = function _updateSelectedItems(activeItem, selectedItems, options){
   if (selectedItems.length === 0) {
     this._selectedItems.push(activeItem);
-    return activeItem[0].classList.add('item-selected');
+    return activeItem.classList.add('item-selected');
   }
 
-  if (!this._removeSelectedItem(options[activeItem[1]],
+  if (!this._removeSelectedItem(options[activeItem.getAttribute('data-id')],
     selectedItems, options)) selectedItems.push(activeItem) &&
-      activeItem[0].classList.add('item-selected');
-  else activeItem[0].classList.remove('item-selected');
+      activeItem.classList.add('item-selected');
+  else activeItem.classList.remove('item-selected');
 
 };
 
@@ -180,12 +224,8 @@ Proto._setActiveItem = function _setActiveItem(index) {
 
   this._clearActiveEl(q('.item-active', this._el));
 
-  this.activeItem = [
-    this._getElFromIndex(index),
-    index
-  ];
-
-  this.activeItem[0].classList.add('item-active');
+  this.activeItem = this._getElFromIndex(index);
+  this.activeItem.classList.add('item-active');
 };
 
 Proto._clearActiveEl = function _clearActiveEl(el) {
@@ -195,7 +235,7 @@ Proto._clearActiveEl = function _clearActiveEl(el) {
 Proto._setPrevActiveItem = function _setPrevActiveItem(activeItem, maxlength){
   if (activeItem) {
     this._setActiveItem(
-      circularDecrement(activeItem[1], maxlength)
+      circularDecrement(activeItem.getAttribute('data-id'), maxlength)
     );
   } else {
     this._setActiveItem(0);
@@ -205,7 +245,7 @@ Proto._setPrevActiveItem = function _setPrevActiveItem(activeItem, maxlength){
 Proto._setNextActiveItem = function _setNextActiveItem(activeItem, maxlength){
   if (activeItem) {
     this._setActiveItem(
-      circularIncrement(activeItem[1], maxlength)
+      circularIncrement(activeItem.getAttribute('data-id'), maxlength)
     );
   } else {
     this._setActiveItem(0);
@@ -213,7 +253,7 @@ Proto._setNextActiveItem = function _setNextActiveItem(activeItem, maxlength){
 };
 
 Proto._getIndexOfView = function _getIndexOfView(id) {
-  return this._options.map(function(opt, index){
+  return this._dropdownOptions.map(function(opt, index){
       return {
         index: index,
         id: opt.model.id
@@ -224,22 +264,9 @@ Proto._getIndexOfView = function _getIndexOfView(id) {
 };
 
 Proto._getElFromIndex = function _getElFromIndex(index) {
-  return [].filter.call(qa('.deus-dd-item-btn', this._el),
-    function(el, idx) {
-      return idx === index;
+  return [].filter.call(qa(this._btnOptionSelector, this._el),
+    function(el) {
+      return el.getAttribute('data-id') === index;
     })[0];
 };
 
-
-Proto._getIndexFromEl = function _getElFromIndex(el) {
-  return [].map.call(qa('.deus-dd-item-btn', this._el),
-    function(btn, index){
-      return {
-        el: btn,
-        index: index
-      };
-    })
-    .filter(function(btn, idx) {
-      return el === btn.el;
-    })[0].index;
-};
