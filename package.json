@@ -8,7 +8,9 @@
     "test": "tests"
   },
   "browserify": {
-    "transform": [ "jadeify" ]
+    "transform": [
+      "jadeify"
+    ]
   },
   "scripts": {
     "test": "test",
@@ -26,10 +28,10 @@
     "vanilla"
   ],
   "dependencies": {
-    "bind-all-lite": "0.0.2",
-    "inherits": "^2.0.1",
     "UI-Icon": "git+ssh://git@github.com:daedelus-j/UI-Icon.git",
+    "bind-all-lite": "0.0.2",
     "dom-events": "^0.1.1",
+    "inherits": "^2.0.1",
     "lunr": "^0.5.7"
   },
   "devDependencies": {

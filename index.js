@@ -150,7 +150,7 @@ Proto._onKeyup = function _onKeyup(){
   // if blank reset active items
   if (searchString === '') {
     this._el.classList.remove('empty-search');
-    this._showActiveViewItems([], this._activeElClassName);
+    this._showActiveViewItems([], [], this._activeElClassName);
     this._setActiveItem(0);
     return;
   }
@@ -246,7 +246,7 @@ Proto._setActiveItem = function _setActiveItem(index) {
   this._clearActiveEl(activeEl);
 
   this.activeItem = this._activeViewItems[index];
-  this.activeItem.classList.add('item-active');
+  this.activeItem && this.activeItem.classList.add('item-active');
 };
 
 Proto._clearActiveEl = function _clearActiveEl(el) {
