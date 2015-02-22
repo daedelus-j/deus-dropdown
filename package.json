@@ -7,14 +7,9 @@
     "example": "example",
     "test": "tests"
   },
-  "browserify": {
-    "transform": [
-      "jadeify"
-    ]
-  },
   "scripts": {
     "test": "test",
-    "example": "node ./example/server.js",
+    "example": "nodemon -w . ./example/server.js",
     "watch": "npm run watch-js && npm run watch-css",
     "watch-js": "./node_modules/watchify/bin/cmd.js ./index.js -o ./dist/deus-dropdown.js",
     "bundle-js": "./node_modules/browserify/bin/cmd.js ./index.js -o ./dist/deus-dropdown.js",
@@ -28,17 +23,20 @@
     "vanilla"
   ],
   "dependencies": {
-    "UI-Icon": "git+ssh://git@github.com:daedelus-j/UI-Icon.git",
     "bind-all-lite": "0.0.2",
     "dom-events": "^0.1.1",
+    "font-awesome": "^4.3.0",
     "inherits": "^2.0.1",
+    "jade": "^1.9.2",
+    "jadeify": "^4.0.1",
+    "jquery-extend": "^2.0.3",
     "lunr": "^0.5.7"
   },
   "devDependencies": {
     "browserify": "^6.3.4",
-    "combokeys": "^2.0.0",
+    "concat-stream": "^1.4.7",
     "ecstatic": "^0.5.8",
-    "jadeify": "^3.0.0",
+    "jadeify": "^4.0.0",
     "nodemon": "^1.2.1",
     "routes-router": "^4.1.2",
     "serve-browserify": "^1.1.0",

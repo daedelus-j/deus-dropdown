@@ -1,8 +1,22 @@
 var http = require('http');
 var fs = require('fs');
 var Router = require('routes-router');
-var jade = require('jadeify');
 var router = Router();
+
+var browserify = require('browserify');
+var concat = require('concat-stream');
+var bundleStr;
+bundle(function(str){ bundleStr = str; });
+function bundle(cb) {
+  browserify()
+    .add(__dirname + '/client.js')
+    .transform(require('jadeify'), {
+      compileDebug: true,
+      pretty: true
+    })
+    .bundle()
+    .pipe(concat(cb));
+}
 
 var ecstatic = require('ecstatic');
 var serveBrowserify = require('serve-browserify')({
@@ -10,7 +24,12 @@ var serveBrowserify = require('serve-browserify')({
     debug: true
   });
 
-router.addRoute('*.js', serveBrowserify);
+router.addRoute('*.js', function(req, res){
+  if (bundleStr) {
+    res.writeHead(200, { 'content-type': 'text/javascript' });
+    return res.end(bundleStr);
+  }
+});
 
 router.addRoute('/', function(req, res){
   res.writeHead(200, { 'content-type': 'text/html' });
@@ -18,8 +37,8 @@ router.addRoute('/', function(req, res){
 });
 
 router.addRoute('/*', ecstatic({
-    root: __dirname + '/../',
-    autoIndex: true
+  root: __dirname + '/../',
+  autoIndex: true
 }));
 
 http.createServer(router)
