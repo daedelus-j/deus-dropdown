@@ -8,8 +8,9 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "test",
-    "example": "npm run watch-css && nodemon -w . ./example/server.js",
+    "test": "",
+    "example": "npm run example-server",
+    "example-server": "./node_modules/nodemon/bin/nodemon.js -w . ./example/server.js",
     "watch": "npm run watch-js && npm run watch-css",
     "watch-js": "./node_modules/watchify/bin/cmd.js ./index.js -o ./dist/deus-dropdown.js",
     "bundle-js": "./node_modules/browserify/bin/cmd.js ./index.js -o ./dist/deus-dropdown.js",
