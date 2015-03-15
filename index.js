@@ -1,31 +1,29 @@
-var tmpl                = require('./templates/index.jade');
-var ASSERT              = require('assert').ok;
-var Emitter             = require('events').EventEmitter;
-var inherits            = require('inherits');
-var dom                 = require('dom-events');
-var bindAll             = require('bind-all-lite');
-var search              = require('./lib/search');
-var q                   = require('./lib/helpers').querySelector;
-var qa                  = require('./lib/helpers').querySelectorAll;
-var toNode              = require('./lib/helpers').toNode;
-var createEl            = require('./lib/helpers').createEl;
-var circularIncrement   = require('./lib/helpers').circularIncrement;
-var circularDecrement   = require('./lib/helpers').circularDecrement;
-var ext                 = require('jquery-extend');
-var input               = require('./lib/input');
+var tmpl = require('./templates/index.jade');
+var ASSERT = require('assert').ok;
+var Emitter = require('events').EventEmitter;
+var inherits = require('inherits');
+var dom = require('dom-events');
+var bindAll = require('bind-all-lite');
+var search = require('./lib/search');
+var q = require('./lib/helpers').querySelector;
+var qa = require('./lib/helpers').querySelectorAll;
+var toNode = require('./lib/helpers').toNode;
+var createEl = require('./lib/helpers').createEl;
+var circularIncrement = require('./lib/helpers').circularIncrement;
+var circularDecrement = require('./lib/helpers').circularDecrement;
+var ext = require('jquery-extend');
+var input = require('./lib/input');
 
 function DeusDropdown(opts) {
 
-  if (!(this instanceof DeusDropdown)) {
-    return new DeusDropdown(opts);
-  }
+  if (!(this instanceof DeusDropdown)) return new DeusDropdown(opts);
 
   ASSERT(!!opts.dropdownOptions, 'must pass in an options array');
 
   bindAll(
     this,
     'render',
-    '_onClick',
+    '_onBtnClick',
     '_onEnter',
     '_onEscape',
     '_onItemMouseover',
@@ -38,27 +36,30 @@ function DeusDropdown(opts) {
 
   this._el = createEl(tmpl, opts);
   this._dropdownOptions = opts.dropdownOptions;
-  this._inactiveElClassName = opts.inactiveElClassName || 'item-inactive';
+  this.hiddenClassName = opts.hiddenClassName || 'item-hidden';
   this._activeElClassName = opts.activeElClassName || 'deus-item-active';
   this._btnOptionSelector = opts.btnOptionSelector || '.deus-dd-item-btn';
-  this._iconSelector = opts.iconSelector || '.deus-btn-with-icon';
+  this.dropdownBtn = opts.dropdownBtn || '.deus-btn-with-icon';
   this._inputSelector = opts.inputSelector || '.deus-dd-input';
   this._searchIndex = search.initialize(this._dropdownOptions);
-  this._selectedItems = [];
-  this.activeItem = null;
-  this._activeViewItems = this._setActiveItems(
-    [], qa(this._btnOptionSelector, this._el));
+
+  this.selectedItems = [];
+  this.currentActiveItem = null;
+  this.shownItems = setShownItems([], qa(this._btnOptionSelector, this._el));
+  this.hiddenItems = [];
+
 }
 
 module.exports = DeusDropdown;
 inherits(DeusDropdown, Emitter);
 ext(DeusDropdown.prototype, {
-  el: function el(){
+
+  el: function el() {
     return this._el;
   },
 
-  selectedItems: function selectedItems(){
-    return this._selectedItems;
+  selectedItems: function selectedItems() {
+    return this.selectedItems;
   },
 
   render: function render() {
@@ -68,37 +69,37 @@ ext(DeusDropdown.prototype, {
 
   bindEvents: function bindEvents() {
     var that = this;
-    dom.on(q(this._iconSelector, this._el), 'click', this._onClick);
+    dom.on(q(this.dropdownBtn, this._el), 'click', this._onBtnClick);
 
     [].forEach.call(qa(this._btnOptionSelector, this._el),
       function(itemEl, idx) {
-        dom.on(itemEl, 'click', function(e){
-          that._onItemClick.apply(that, [e, that._dropdownOptions[idx]]);
+        dom.on(itemEl, 'click', function(e) {
+          that._onItemClick.call(that, e);
         });
-        dom.on(itemEl, 'mouseover', function(e){
-          that._onItemMouseover.apply(that, [e, that._dropdownOptions[idx]]);
+        dom.on(itemEl, 'mouseover', function(e) {
+          that._onItemMouseover.call(that, e);
         });
-        dom.on(itemEl, 'mouseout', function(e){
-          that._onItemMouseout.apply(that, [e, that._dropdownOptions[idx]]);
+        dom.on(itemEl, 'mouseout', function(e) {
+          that._onItemMouseout.call(that, e);
         });
       });
 
     input(q(this._inputSelector, this._el), {
-      onDown: this._onArrowDown,
-      onUp: this._onArrowUp,
-      onEnter: this._onEnter,
-      onEscape: this._onEscape,
-      onKeyup: this._onKeyup
+      down: this._onArrowDown,
+      up: this._onArrowUp,
+      enter: this._onEnter,
+      escape: this._onEscape,
+      keyup: this._onKeyup
     });
   },
 
-  _onClick: function _onClick(e) {
+  _onBtnClick: function _onBtnClick(e) {
     e.preventDefault();
     var that = this;
     this.emit('clicked', e);
     this._el.classList.toggle('deus-dd-active');
 
-    process.nextTick(function(){
+    process.nextTick(function() {
       q(that._inputSelector, that._el).focus();
     });
   },
@@ -107,121 +108,108 @@ ext(DeusDropdown.prototype, {
     e.preventDefault();
     this.emit('clicked', e);
     e.currentTarget.classList.toggle('item-selected');
-    this._selectedItems.push(e.currentTarget);
+    this.selectedItems.push(e.currentTarget);
   },
 
-  _onItemMouseover: function _onItemMouseover(e, view) {
-    e.currentTarget.classList.add('item-active');
-    this._setActiveItem(this._getIndexOfView(view.model.id));
+  _onItemMouseover: function _onItemMouseover(e) {
+    var el = e.currentTarget;
+    var id = parseInt(el.getAttribute('data-id'), 10);
+    this.setCurrentItem(getIndexOfView(this.shownItems, id));
   },
 
   _onItemMouseout: function _onItemMouseout(e) {
-    this._setActiveItem(null);
+    this.setCurrentItem(null);
   },
 
-  _onArrowDown: function _onArrowDown(e){
+  _onArrowDown: function _onArrowDown(e) {
     e.preventDefault();
-    if (!this.activeItem) this._setActiveItem(0);
-    this._cycleActiveItem(this.activeItem,
-      circularIncrement, this._activeViewItems);
+    if (!this.currentActiveItem) this.setCurrentItem(0);
+    this._cycleActiveItem(this.currentActiveItem,
+      circularIncrement, this.shownItems);
   },
 
-  _onArrowUp: function _onArrowUp(e){
+  _onArrowUp: function _onArrowUp(e) {
     e.preventDefault();
-    if (!this.activeItem) this._setActiveItem(
-      this._activeViewItems.length - 1);
-    this._cycleActiveItem(this.activeItem,
-      circularDecrement, this._activeViewItems);
+    if (!this.currentActiveItem) this.setCurrentItem(
+      this.shownItems.length - 1);
+    this._cycleActiveItem(this.currentActiveItem,
+      circularDecrement, this.shownItems);
   },
 
-  _onEscape: function _onEscape(){
+  _onEscape: function _onEscape() {
     this._el.classList.toggle('deus-dd-active');
-    this._setActiveItem(null);
+    this.setCurrentItem(null);
   },
 
-  _onEnter: function _onEnter(){
-    if (this.activeItem) this._updateSelectedItems(
-      this.activeItem, this._selectedItems);
+  _onEnter: function _onEnter() {
+    if (this.currentActiveItem) this._updateSelectedItems(
+      this.currentActiveItem, this.selectedItems);
   },
 
-  _onKeyup: function _onKeyup(){
+  _onKeyup: function _onKeyup() {
     var searchString = q(this._inputSelector).value;
-    var indices, btns;
+    var btns = qa(this._btnOptionSelector, this._el);
+    var that = this;
+    var indices;
+
+    this._el.classList.remove('empty-search');
 
     // if blank reset active items
     if (searchString === '') {
-      this._el.classList.remove('empty-search');
-      this._showActiveViewItems([], [], this._activeElClassName);
-      this._setActiveItem(0);
+      this.shownItems = setShownItems([], btns, this.hiddenClassName);
+      this.hiddenItems = [];
+      this.setCurrentItem(0);
       return;
     }
 
     indices = search.getIndices(this._searchIndex, searchString);
 
     if (indices.length > 0) {
-      btns = qa(this._btnOptionSelector, this._el);
-      this._el.classList.remove('empty-search');
-      this._clearInactiveViewItems(btns, 'item-inactive')
-        ._showActiveViewItems(indices, btns, this._inactiveElClassName);
-      this._setActiveItems(indices, btns);
-      this._setActiveItem(0);
+      this.shownItems = setShownItems(indices, btns, this.hiddenClassName);
+      this.hiddenItems = setHiddenItems(indices, btns, this.hiddenClassName);
+      this.setCurrentItem(0);
       return;
     }
 
     this._showEmptySearch();
   },
 
-  _setActiveItems: function _setActiveItems(indices, els){
-    if (indices.length === 0) return this._activeViewItems = els;
-
-    var activeEls = [].filter.call(els,
-      function(el, i) {
-        return indices.indexOf(
-          parseInt(el.getAttribute('data-id'), 10)) !== -1;
-      });
-
-    this._activeViewItems = (activeEls.length === 0) ? els : activeEls;
-  },
-
-  _showEmptySearch: function _showEmptySearch(){
+  _showEmptySearch: function _showEmptySearch() {
     this._el.classList.add('empty-search');
   },
 
-  _showActiveViewItems: function _showActiveViewItems(indices, els, className){
-
-    [].forEach.call(els, function(el){
+  showItems: function showItems(indices, els, className) {
+    [].forEach.call(els, function(el) {
       var id = parseInt(el.getAttribute('data-id'), 10);
       if (indices.indexOf(id) === -1) return el.classList.add(className);
       el.classList.remove(className);
     });
-
   },
 
-  _clearInactiveViewItems: function _clearInactiveViewItems(
-    els, inactiveClassName){
-    [].forEach.call(els,
-      function(el){ el.classList.remove(inactiveClassName); });
+  _clearInactives: function _clearInactives(hiddenItems, inactiveClassName) {
+    hiddenItems.forEach(function(el) {
+      el.classList.remove(inactiveClassName);
+    });
+    hiddenItems = [];
     return this;
   },
 
-  _updateSelectedItems: function _updateSelectedItems(
-    activeItem, selectedItems){
+  _updateSelectedItems: function _updateSelectedItems(activeItem, selectedItems) {
     if (selectedItems.length === 0) {
-      this._selectedItems.push(activeItem);
+      this.selectedItems.push(activeItem);
       activeItem.classList.add('item-selected');
-      return ;
+      return;
     }
 
     if (!this._removeSelectedItem(activeItem, selectedItems)) {
       selectedItems.push(activeItem);
       activeItem.classList.add('item-selected');
-    }
-    else activeItem.classList.remove('item-selected');
+    } else activeItem.classList.remove('item-selected');
   },
 
-  _removeSelectedItem: function _removeSelectedItem(activeItem, selectedItems){
+  _removeSelectedItem: function _removeSelectedItem(activeItem, selectedItems) {
     var idx;
-    var found = selectedItems.some(function(selectedItem, index){
+    var found = selectedItems.some(function(selectedItem, index) {
       var currItemId = parseInt(selectedItem.getAttribute('data-id'), 10);
       var activeItemId = parseInt(activeItem.getAttribute('data-id'), 10);
       if (currItemId === activeItemId) {
@@ -234,46 +222,75 @@ ext(DeusDropdown.prototype, {
     return found;
   },
 
-  _setActiveItem: function _setActiveItem(index) {
-    var activeEl = q('.item-active', this._el);
+  setCurrentItem: function setCurrentItem(index) {
+    clearActiveEl(q('.item-active', this._el));
+    if (index === null) return this.currentActiveItem = null;
 
-    if (index === null) {
-      this._clearActiveEl(activeEl);
-      return this.activeItem = null;
-    }
-
-    this._clearActiveEl(activeEl);
-    this.activeItem = this._activeViewItems[index];
-    this.activeItem && this.activeItem.classList.add('item-active');
+    this.currentActiveItem = this.shownItems[index];
+    this.currentActiveItem && this.currentActiveItem.classList.add('item-active');
   },
 
-  _clearActiveEl: function _clearActiveEl(el) {
-    if (el) el.classList.remove('item-active');
-  },
-
-  _cycleActiveItem: function _cycleActiveItem(activeItem, cycleFn, activeItems){
+  _cycleActiveItem: function _cycleActiveItem(activeItem, cycleFn, activeItems) {
     var maxLength = activeItems.length - 1;
     var index = getIndices(activeItems)
       .indexOf(activeItem.getAttribute('data-id'));
 
-    if (activeItem) this._setActiveItem(cycleFn(index, maxLength));
-    else this._setActiveItem(0);
+    if (activeItem) this.setCurrentItem(cycleFn(index, maxLength));
+    else this.setCurrentItem(0);
 
-    function getIndices(els){
-      return [].map.call(els, function(el){
+    function getIndices(els) {
+      return [].map.call(els, function(el) {
         return el.getAttribute('data-id');
       });
     }
-  },
-
-  _getIndexOfView: function _getIndexOfView(id) {
-    return this._dropdownOptions.map(function(opt, index){
-      return {
-        index: index,
-        id: opt.model.id
-      };
-      }).filter(function(opt, index){
-        return opt.id === id;
-      })[0].index;
   }
 });
+
+function clearActiveEl(el) {
+  if (el) el.classList.remove('item-active');
+}
+
+
+function getIndexOfView(els, id) {
+  return [].map.call(els, function(el, index) {
+    return {
+      index: index,
+      id: parseInt(el.getAttribute('data-id'), 10)
+    };
+  }).filter(function(opt, index) {
+    return opt.id === id;
+  })[0].index;
+}
+
+function setShownItems(indices, els, className) {
+  if (indices.length === 0) {
+    [].forEach.call(els, function(el) {
+      el.classList.remove(className);
+    });
+    return els;
+  }
+
+  var shownEls = [].filter.call(els, function(el, i) {
+      return indices.indexOf(
+        parseInt(el.getAttribute('data-id'), 10)) !== -1;
+    });
+
+  shownEls && shownEls.forEach(function(el) {
+    el.classList.remove(className);
+  });
+
+  return (shownEls.length === 0) ? els : shownEls;
+}
+
+function setHiddenItems(indices, els, className) {
+  var items = [].filter.call(els, function(el, i) {
+    return indices.indexOf(
+      parseInt(el.getAttribute('data-id'), 10)) === -1;
+    });
+
+  items && items.forEach(function(el) {
+    el.classList.add(className);
+  });
+
+  return items;
+}
