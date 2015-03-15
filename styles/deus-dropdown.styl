@@ -1,4 +1,4 @@
-@import 'semantic-ui-icon'
+@import '../node_modules/font-awesome/css/font-awesome.css'
 
 a
   text-decoration: none
@@ -17,11 +17,22 @@ a
   list-style: none
 
 .deus-dd-item-btn
-  i.icon
+  i.fa
     display: none
   &.item-selected
-    i.icon
+    i.fa
       display: inline-block
   &.item-active
-    background: #eee
+    background: blue
+    color: white
+  &.item-hidden
+    display: none
 
+.empty-item
+  display: none
+
+.empty-search
+  .empty-item
+    display: block
+  .deus-dd-items
+    display: none

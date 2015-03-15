@@ -4,12 +4,13 @@ include ./mixins/btn/text-with-icon.jade
   +btn_with_icon(btn)
   .deus-dd-drop-cont
     input.deus-dd-input(type="text")
+    include ./empty-search.jade
     ul.deus-dd-items
-      for option in options
+      for option in dropdownOptions
         li.deus-dd-item
-          a.deus-dd-item-btn(href="#")
+          a.deus-dd-item-btn(href="#", data-id=option.model.id)
             span.option-text=option.text
-            i.icon.minus
+            i.fa.fa-minus
 
 
 
